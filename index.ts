@@ -1,13 +1,14 @@
 /**
  * Should start with a ether balance of what you want to trade with.
  */
-
+import { config } from "./config"
 import * as GTT from "gdax-trading-toolkit"
 import { Big } from "gdax-trading-toolkit/build/src/lib/types"
 import {
   GDAX_WS_FEED,
   GDAXFeed,
   GDAXFeedConfig,
+  GDAXExchangeAPI,
 } from "gdax-trading-toolkit/build/src/exchanges"
 import { GDAX_API_URL } from "gdax-trading-toolkit/build/src/exchanges/gdax/GDAXExchangeAPI"
 import {
@@ -27,10 +28,22 @@ import {
 } from "gdax-trading-toolkit/build/src/core"
 import { Ticker } from "gdax-trading-toolkit/build/src/exchanges/PublicExchangeAPI"
 import { CumulativePriceLevel } from "gdax-trading-toolkit/build/src/lib"
+import { GDAXConfig } from "gdax-trading-toolkit/build/src/exchanges/gdax/GDAXInterfaces"
 
 const product = "ETH-EUR"
 const logger = GTT.utils.ConsoleLoggerFactory()
-const gdaxAPI = GTT.Factories.GDAX.DefaultAPI(logger)
+
+const gdaxConfig: GDAXConfig = {
+  logger: logger,
+  apiUrl: process.env.GDAX_API_URL || "https://api.gdax.com",
+  auth: {
+    key: config.GDAX_KEY,
+    secret: config.GDAX_SECRET,
+    passphrase: config.GDAX_PASSPHRASE,
+  },
+}
+const gdaxAPI = new GDAXExchangeAPI(gdaxConfig)
+
 const [base, quote] = product.split("-")
 
 const getBalances = (profileId: string) =>
@@ -44,11 +57,9 @@ async function run(options: GDAXFeedConfig, product: any) {
   let triggerPrice = Big("0")
   const feed = await GTT.Factories.GDAX.getSubscribedFeeds(options, [product])
 
-  const profileId = await gdaxAPI
-    .loadCoinbaseAccount(product, true)
-    .then(all => all.id)
+  console.log(`base: ${base}`)
 
-  let isLong = (await getBalances(profileId))[base].available.isZero()
+  let isLong = (await getBalances(config.userId))[base].available.isZero()
     ? false
     : true
   console.log(`Start position is ${isLong ? "LONG" : "NONE"}.`)
@@ -64,7 +75,7 @@ async function run(options: GDAXFeedConfig, product: any) {
       console.log("New highestPrice: " + highestPrice)
       console.log("New triggerPrice: " + triggerPrice)
 
-      const balances = await getBalances(profileId)
+      const balances = await getBalances(config.userId)
       const baseBalance = balances[base].available
       const quoteBalance = balances[quote].available
 
